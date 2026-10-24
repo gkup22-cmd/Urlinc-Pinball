@@ -23,6 +23,9 @@ User choices: Claude Sonnet 5.5 (table design), GPT Image (photo-realistic art â
 - Layout variety: AI places guide rails, habitrail wire ramps that carry the ball to an inlane, target styles (drop, flag, shield, gem, post) with knock-down animation
 - Photo-real renderer: metallic bumpers with LED rings + gloss, metal rails/slings/saucers, flash light shows, ball search; new art kind: photo-real bumper caps
 
+## Iteration 3 (2026-06)
+- Parts Kits: photo-real hardware sets (20 slots: bumper cap/lit/base, ball, saucer, flipper, slingshot insert, 5 target styles, lane lights, shot arrows, guide rail, rail post, aprons). Seeded URLinc Gold kit sliced from the user ChatGPT sprite sheet (checkerboard removed). Kit chosen when forging (Hardware) or in Editor Brand tab; per-slot uploads on Brand Kit page; empty slots fall back to drawn parts
+
 ## Backlog
 - P1: Leaderboard with player initials per table; true 3D ramps/wire habitrails; spinners
 - P1: Integration with URLinc.us login (per-user libraries)

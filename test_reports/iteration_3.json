@@ -1,0 +1,20 @@
+{
+  "summary": "Iteration 3: Parts Kits. Backend 8/8 pytest passing (tests/test_parts_kits.py). The seeded 'URLinc Gold' kit has material gold and all 20 slots, and its PNGs are served by /api/files. /slots returns the slot list. Create kit works (an empty name gives 422). Upload works; unknown slot -> 400; non-image -> 400; missing kit -> 404. Part removal works. Soft delete removes the kit from the list, clears parts_kit_id on tables that used it, and a second delete -> 404. PUT table with a kit id sets it, '' clears it to null, a bogus id -> 404. Generate with parts_kit_id sets parts_kit_id and style.material='gold' (1 table, deleted afterwards). Generate with an unknown kit -> 404. Frontend, all passing with no console errors: /brand shows the gold kit with 20/20 slot thumbnails loaded; create-kit-btn creates a kit and delete-kit confirm removes it. Editor Brand tab: editor-parts-kit-select switches between gold and drawn parts, the preview canvas re-renders (gold caps/flippers/aprons/targets vs drawn), the unsaved indicator shows, and both clearing and setting the kit survive Save + reload. Home: forge-parts-kit-select lists 'Drawn parts (no kit)' and 'URLinc Gold'. Play da0fe73f: the kit is rendered, story skip works, the plunger launched and flippers were pressed, score reached 13,250 with no errors. Regression: the story crawl closed by itself after about 45s.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_parts_kits.py", "/app/test_reports/pytest/pytest_iter3.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "parts.py upload_part accepts any image/* type, including image/svg+xml, and takes the extension from the client filename. Restrict uploads to png/webp/jpeg to avoid SVG script injection when files are served inline.",
+    "upload_part reads the whole file into memory before checking the 8MB limit. Minor.",
+    "PartsKits.jsx: the remove-kit and remove-part handlers have no try/catch or error toast. useTableImages has no catch around the async IIFE, so a failed /parts-kits fetch is an unhandled rejection and the images never load.",
+    "delete_kit soft-deletes the kit but leaves its db.files records undeleted (the art delete path does mark them deleted). Inconsistent with that path.",
+    "KitUpdate allows any material value and drops invalid ones silently instead of returning 422."
+  ],
+  "updated_files": ["/app/backend/tests/test_parts_kits.py"],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100%"},
+  "seed_data_creation": "TEST_kit and TEST_UI Kit kits were created and soft-deleted (2 of the TEST_UI Kit, one from a crashed script run). One TEST_ generated table was deleted. Table da0fe73f is back on the URLinc Gold kit (04cf03a3-7166-43ec-81e3-492cbf837a77).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Gold kit id is 04cf03a3-7166-43ec-81e3-492cbf837a77. Do not delete it. Kit card testid is parts-kit-{id}; note that the prefix 'parts-kit-' also matches parts-kits-section. Confirm dialogs need page.on('dialog') with accept. The story crawl auto-closes in about 45s on da0fe73f."
+}
