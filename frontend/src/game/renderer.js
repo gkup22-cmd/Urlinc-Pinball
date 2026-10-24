@@ -34,6 +34,18 @@ function drawContain(ctx, img, cx, cy, maxW, maxH) {
   ctx.drawImage(img, cx - (img.width * r) / 2, cy - (img.height * r) / 2, img.width * r, img.height * r);
 }
 
+// draw a part image centred at (cx, cy), fitted into w x h, rotated by rot
+function part(ctx, img, cx, cy, w, h, rot = 0, sy = 1) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (rot) ctx.rotate(rot);
+  if (sy !== 1) ctx.scale(1, sy);
+  drawContain(ctx, img, 0, 0, w, h);
+  ctx.restore();
+}
+
+const FLIP = { px: 75 / 512, py: 72 / 159, len: 430 / 512, tilt: 0.093 };
+
 function outline(ctx) {
   ctx.beginPath();
   ctx.moveTo(LEFT, H);
@@ -158,7 +170,15 @@ export function buildStatic(t, images, fonts) {
   }
   ctx.fillStyle = "#04050a";
   ctx.fillRect(146, 840, 175, 60);
-  if (images.apronLogo) {
+  const parts = images.parts || {};
+  if (parts.apron_left || parts.apron_right) {
+    if (parts.apron_left) drawContain(ctx, parts.apron_left, 76, 845, 128, 90);
+    if (parts.apron_right) drawContain(ctx, parts.apron_right, 391, 845, 128, 90);
+    if (images.apronLogo) {
+      drawContain(ctx, images.apronLogo, 76, 845, 54, 40);
+      drawContain(ctx, images.apronLogo, 391, 845, 54, 40);
+    }
+  } else if (images.apronLogo) {
     drawContain(ctx, images.apronLogo, 70, 840, 90, 70);
     drawContain(ctx, images.apronLogo, 395, 840, 90, 70);
   } else {
@@ -189,6 +209,19 @@ export function buildStatic(t, images, fonts) {
     ctx.fillStyle = g;
     ctx.fill();
     railStroke(ctx, t, 3);
+    if (parts.slingshot) {
+      const cx = (P[0][0] + P[1][0] + P[2][0]) / 3;
+      const cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
+      ctx.save();
+      ctx.translate(cx, cy);
+      if (side === "right") ctx.scale(-1, 1);
+      drawContain(ctx, parts.slingshot, 0, 0, 40, 40);
+      ctx.restore();
+    }
+    if (parts.rail_post) {
+      for (const [x, y] of P) drawContain(ctx, parts.rail_post, x, y, 13, 16);
+      continue;
+    }
     for (const [x, y] of P) {
       ctx.beginPath();
       ctx.arc(x, y, 3.5, 0, Math.PI * 2);
@@ -205,7 +238,22 @@ export function buildStatic(t, images, fonts) {
     ctx.fill();
   }
   // guide rails
-  for (const r of t.rails || []) drawWireform(ctx, railPoints(r), t, false);
+  for (const r of t.rails || []) {
+    const pts = railPoints(r);
+    if (parts.rail) {
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1];
+        const [bx, by] = pts[i];
+        const len = Math.hypot(bx - ax, by - ay);
+        ctx.save();
+        ctx.translate((ax + bx) / 2, (ay + by) / 2);
+        ctx.rotate(Math.atan2(by - ay, bx - ax));
+        ctx.drawImage(parts.rail, -len / 2 - 4, -8, len + 8, 16);
+        ctx.restore();
+      }
+      if (parts.rail_post) pts.forEach(([x, y]) => drawContain(ctx, parts.rail_post, x, y, 14, 17));
+    } else drawWireform(ctx, pts, t, false);
+  }
   return c;
 }
 
@@ -273,7 +321,24 @@ function drawWireform(ctx, pts, t, elevated) {
   ctx.restore();
 }
 
-function drawBumper(ctx, b, t, flash, img, time, fonts) {
+function drawBumper(ctx, b, t, flash, img, time, fonts, parts = {}) {
+  if (!img && parts.bumper_cap) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(b.x + 4, b.y + 7, b.r + 10, b.r + 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fill();
+    if (parts.bumper_base) drawContain(ctx, parts.bumper_base, b.x, b.y + 2, (b.r + 12) * 2, (b.r + 12) * 2);
+    if (flash > 0) {
+      ctx.shadowColor = t.palette.accent;
+      ctx.shadowBlur = 36;
+    }
+    const cap = flash > 0 && parts.bumper_cap_lit ? parts.bumper_cap_lit : parts.bumper_cap;
+    const s = flash > 0 ? (b.r + 6) * 2 : (b.r + 4) * 2;
+    drawContain(ctx, cap, b.x, b.y, s, s);
+    ctx.restore();
+    return;
+  }
   const p = t.palette;
   const m = metal(t);
   ctx.save();
@@ -407,6 +472,17 @@ function drawTarget(ctx, tg, g) {
     return;
   }
   ctx.scale(1, Math.max(0.1, k));
+  const pimg = g.parts?.[`target_${style}`];
+  if (pimg) {
+    if (hit) {
+      ctx.shadowColor = "#fff";
+      ctx.shadowBlur = 26;
+    } else ctx.shadowBlur = 0;
+    const h = style === "drop" ? 34 : style === "flag" ? 34 : tg.w + 6;
+    drawContain(ctx, pimg, 0, style === "post" ? -4 : 0, tg.w + 10, h);
+    ctx.restore();
+    return;
+  }
   ctx.shadowColor = p.accent;
   ctx.shadowBlur = hit ? 26 : 10;
   if (style === "flag") {
@@ -502,7 +578,22 @@ function drawTarget(ctx, tg, g) {
   ctx.restore();
 }
 
-export function drawFlipper(ctx, side, angle, t) {
+export function drawFlipper(ctx, side, angle, t, parts = {}) {
+  if (parts.flipper_left) {
+    const img = parts.flipper_left;
+    const pv = PIVOTS[side];
+    const s = (FLEN + FR1) / (img.width * FLIP.len);
+    ctx.save();
+    ctx.translate(pv.x, pv.y);
+    if (side === "right") ctx.scale(-1, 1);
+    ctx.rotate(angle - FLIP.tilt);
+    ctx.shadowColor = "rgba(0,0,0,0.6)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 4;
+    ctx.drawImage(img, -img.width * FLIP.px * s, -img.height * FLIP.py * s, img.width * s, img.height * s);
+    ctx.restore();
+    return;
+  }
   const color = t.palette.accent;
   const m = metal(t) || METALS.chrome;
   const pv = PIVOTS[side];
@@ -544,7 +635,7 @@ export function drawFlipper(ctx, side, angle, t) {
   ctx.restore();
 }
 
-function drawBall(ctx, b) {
+function drawBall(ctx, b, parts = {}) {
   const s = b.ride ? 1.25 : 1;
   const r = BALL_R * s;
   const off = b.ride ? 12 : 3;
@@ -552,6 +643,10 @@ function drawBall(ctx, b) {
   ctx.arc(b.x + off * 0.6, b.y + off, r, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fill();
+  if (parts.ball) {
+    drawContain(ctx, parts.ball, b.x, b.y, r * 2.1, r * 2.1);
+    return;
+  }
   const g = ctx.createRadialGradient(b.x - 3 * s, b.y - 4 * s, 1, b.x, b.y, r);
   g.addColorStop(0, "#ffffff");
   g.addColorStop(0.3, "#dfe3ea");
@@ -573,8 +668,21 @@ function drawElements(ctx, g) {
   const fx = g.fx;
   const fonts = g.fonts;
   const chase = Math.floor(g.time * 6) % 3;
+  const P = g.parts || {};
   (t.rollovers || []).forEach((r) => {
     const lit = g.lit[r.id];
+    if (P.rollover) {
+      const img = lit && P.rollover_lit ? P.rollover_lit : P.rollover;
+      ctx.save();
+      if (lit) {
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 20;
+      }
+      drawContain(ctx, img, r.x, r.y, 30, 30);
+      ctx.restore();
+      label(ctx, r.label?.slice(0, 3), r.x, r.y + 22, p.glow, 9, fonts.body);
+      return;
+    }
     ctx.save();
     ctx.beginPath();
     ctx.arc(r.x, r.y, 12, 0, Math.PI * 2);
@@ -589,10 +697,24 @@ function drawElements(ctx, g) {
     label(ctx, r.label?.slice(0, 3), r.x, r.y, lit ? "#000" : p.glow, 10, fonts.body);
   });
   (t.ramps || []).forEach((r) => {
-    drawArrow(ctx, r, p, (fx[r.id] || 0) > 0 || g.flash ? true : chase);
+    if (P.arrow) {
+      const on = (fx[r.id] || 0) > 0 || g.flash || Math.floor(g.time * 3) % 2 === 0;
+      part(ctx, on && P.arrow_lit ? P.arrow_lit : P.arrow, r.x, r.y, 26, 40, (r.angle ?? -1.57) + Math.PI / 2);
+    } else drawArrow(ctx, r, p, (fx[r.id] || 0) > 0 || g.flash ? true : chase);
     label(ctx, r.label, r.x, r.y + 30, "#fff", 9, fonts.body);
   });
   (t.saucers || []).forEach((s) => {
+    if (P.saucer) {
+      ctx.save();
+      if ((fx[s.id] || 0) > 0) {
+        ctx.shadowColor = p.accent;
+        ctx.shadowBlur = 30;
+      }
+      drawContain(ctx, P.saucer, s.x, s.y, 38, 38);
+      ctx.restore();
+      label(ctx, s.label, s.x, s.y + 28, p.accent, 9, fonts.body);
+      return;
+    }
     ctx.save();
     ctx.beginPath();
     ctx.arc(s.x, s.y, 17, 0, Math.PI * 2);
@@ -617,7 +739,7 @@ function drawElements(ctx, g) {
     const ny = Math.cos(tg.angle || 0);
     label(ctx, tg.label, tg.x + nx * 17, tg.y + ny * 17, g.down[tg.id] ? "rgba(255,255,255,0.35)" : "#fff", 8, fonts.body);
   });
-  (t.bumpers || []).forEach((b, i) => drawBumper(ctx, b, t, fx[b.id] || 0, g.bumperImg(i), g.time, fonts));
+  (t.bumpers || []).forEach((b, i) => drawBumper(ctx, b, t, fx[b.id] || 0, g.bumperImg(i), g.time, fonts, g.parts));
   for (const side of ["left", "right"]) {
     if ((fx["sling-" + side] || 0) > 0) {
       const P = SLINGS[side];
@@ -653,15 +775,15 @@ export function drawFrame(ctx, g) {
   ctx.fillRect(LANE + 8, PLUNGER_Y + pull, RIGHT - LANE - 16, 6);
   ctx.fillStyle = g.table.palette.accent;
   ctx.fillRect(LANE + 13, PLUNGER_Y + 6 + pull, RIGHT - LANE - 26, 14);
-  drawFlipper(ctx, "left", g.flippers.left.angle, g.table);
-  drawFlipper(ctx, "right", g.flippers.right.angle, g.table);
-  g.balls.filter((b) => !b.ride).forEach((b) => drawBall(ctx, b));
+  drawFlipper(ctx, "left", g.flippers.left.angle, g.table, g.parts);
+  drawFlipper(ctx, "right", g.flippers.right.angle, g.table, g.parts);
+  g.balls.filter((b) => !b.ride).forEach((b) => drawBall(ctx, b, g.parts));
   g.ambient?.draw(ctx, g.table.palette, g.time);
   (g.table.ramps || []).forEach((r) => {
     const path = g.habitrails?.[r.id] || habitrailPath(r);
     if (path) drawWireform(ctx, path.pts, g.table, true);
   });
-  g.balls.filter((b) => b.ride).forEach((b) => drawBall(ctx, b));
+  g.balls.filter((b) => b.ride).forEach((b) => drawBall(ctx, b, g.parts));
   g.particles.forEach((pt) => {
     ctx.globalAlpha = Math.max(0, pt.life / pt.max);
     ctx.fillStyle = pt.color;

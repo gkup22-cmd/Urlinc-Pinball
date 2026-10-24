@@ -18,22 +18,31 @@ export function useTableImages(table) {
   const caps = table?.art_enabled?.caps !== false ? table?.art?.caps : null;
   const ids = table?.brand?.enabled ? (table.brand.asset_ids || []).join(",") : "";
   const apron = table?.brand?.enabled && table?.brand?.apronLogo;
+  const kitId = table?.parts_kit_id || "";
   useEffect(() => {
     let alive = true;
     (async () => {
       const playfield = await loadImage(fileUrl(pf));
       const capsImg = await loadImage(fileUrl(caps));
+      const parts = {};
+      if (kitId) {
+        const { data: kits } = await http.get("/parts-kits");
+        const kit = kits.find((k) => k.id === kitId);
+        const entries = Object.entries(kit?.parts || {});
+        const imgs = await Promise.all(entries.map(([, p]) => loadImage(fileUrl(p))));
+        entries.forEach(([slot], i) => imgs[i] && (parts[slot] = imgs[i]));
+      }
       let brandImgs = [];
       if (ids) {
         const { data } = await http.get("/assets");
         const chosen = data.filter((a) => ids.split(",").includes(a.id));
         brandImgs = (await Promise.all(chosen.map((a) => loadImage(fileUrl(a.storage_path))))).filter(Boolean);
       }
-      if (alive) setState({ images: { playfield, caps: capsImg, apronLogo: apron ? brandImgs[0] : null }, brandImgs });
+      if (alive) setState({ images: { playfield, caps: capsImg, parts, apronLogo: apron ? brandImgs[0] : null }, brandImgs });
     })();
     return () => {
       alive = false;
     };
-  }, [pf, caps, ids, apron]);
+  }, [pf, caps, ids, apron, kitId]);
   return state;
 }

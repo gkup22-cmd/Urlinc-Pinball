@@ -3,9 +3,11 @@ import { Switch } from "../ui/switch";
 import { Checkbox } from "../ui/checkbox";
 import { BrandPicker, PLACEMENTS } from "../BrandPicker";
 import { useAssets } from "../../hooks/useTableMedia";
+import { KitSelect, usePartsKits } from "../PartsKits";
 
 export const BrandTab = ({ draft, patch }) => {
   const { assets } = useAssets();
+  const { kits } = usePartsKits();
   const b = draft.brand || { enabled: false, asset_ids: [], bumperCaps: true, backglassLogo: true, apronLogo: true };
   const set = (k, v) => patch({ brand: { ...b, [k]: v } });
   return (
@@ -30,6 +32,11 @@ export const BrandTab = ({ draft, patch }) => {
         </>
       )}
       <Link to="/brand" className="text-sm text-[var(--cyan)] underline-offset-4 hover:underline" data-testid="manage-brand-kit-link">Manage brand kit →</Link>
+      <div className="space-y-2 border-t border-white/10 pt-5">
+        <h3 className="ed-h">Parts kit</h3>
+        <KitSelect kits={kits} value={draft.parts_kit_id} onChange={(v) => patch({ parts_kit_id: v })} testid="editor-parts-kit-select" />
+        <p className="text-xs text-white/45">Swap the drawn hardware for a photo-real parts kit.</p>
+      </div>
     </div>
   );
 };

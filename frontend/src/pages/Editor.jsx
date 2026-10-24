@@ -16,7 +16,7 @@ import { useTable } from "../hooks/useTable";
 import { KINDS, W, H, elementRadius } from "../game/geometry";
 import { errMsg, http } from "../lib/api";
 
-const EDITABLE = ["name", "palette", "bumpers", "targets", "rollovers", "ramps", "saucers", "rails", "style", "story", "missions", "scoring", "physics", "backglass", "brand", "art_enabled"];
+const EDITABLE = ["name", "palette", "bumpers", "targets", "rollovers", "ramps", "saucers", "rails", "style", "story", "missions", "scoring", "physics", "backglass", "brand", "art_enabled", "parts_kit_id"];
 const TABS = [["layout", "Layout"], ["gameplay", "Gameplay"], ["missions", "Missions"], ["story", "Story & Style"], ["backglass", "Back-glass"], ["art", "Art"], ["brand", "Brand"]];
 
 export default function Editor() {
@@ -80,6 +80,7 @@ export default function Editor() {
     setSaving(true);
     try {
       const body = Object.fromEntries(EDITABLE.map((k) => [k, draft[k]]));
+      body.parts_kit_id = draft.parts_kit_id || "";
       const { data } = await http.put(`/tables/${id}`, { ...body, saved: true });
       setDraft(data);
       setDirty(false);

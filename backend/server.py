@@ -18,6 +18,7 @@ load_dotenv(ROOT_DIR / '.env')
 
 from storage import APP_NAME, get_object, init_storage, put_object  # noqa: E402
 from table_gen import art_prompt, generate_layout, generate_story, sanitize_layout, sanitize_story  # noqa: E402
+from parts import build_router  # noqa: E402
 
 client = AsyncIOMotorClient(os.environ['MONGO_URL'])
 db = client[os.environ['DB_NAME']]
@@ -47,6 +48,7 @@ class GenerateRequest(BaseModel):
     theme: str = Field(min_length=1, max_length=300)
     brand: BrandOptions = BrandOptions()
     generate_art: bool = False
+    parts_kit_id: Optional[str] = None
 
 
 class TableUpdate(BaseModel):
@@ -67,6 +69,7 @@ class TableUpdate(BaseModel):
     backglass: Optional[dict] = None
     brand: Optional[BrandOptions] = None
     art_enabled: Optional[dict] = None
+    parts_kit_id: Optional[str] = None
 
 
 class ArtRequest(BaseModel):
@@ -126,13 +129,21 @@ async def generate_table(req: GenerateRequest):
     if req.brand.enabled and req.brand.asset_ids:
         assets = await db.assets.find({"id": {"$in": req.brand.asset_ids}, "is_deleted": False}, NO_ID).to_list(50)
         brand_names = sorted({a.get("brand") or a["name"] for a in assets})
+    kit = None
+    if req.parts_kit_id:
+        kit = await db.parts_kits.find_one({"id": req.parts_kit_id, "is_deleted": False}, NO_ID)
+        if not kit:
+            raise HTTPException(404, "Parts kit not found")
     try:
         layout = await generate_layout(req.theme.strip(), brand_names)
     except Exception as e:
         logger.exception("Layout generation failed")
         raise HTTPException(502, f"Table generation failed, please try again ({str(e)[:80]})")
+    if kit:
+        layout["style"]["material"] = kit.get("material", layout["style"]["material"])
     table = {
         "id": str(uuid.uuid4()), "theme": req.theme.strip(), "saved": False, **layout,
+        "parts_kit_id": kit["id"] if kit else None,
         "brand": req.brand.model_dump() if req.brand.enabled else BrandOptions().model_dump(),
         "art": {}, "art_status": {k: "generating" for k in ART_KINDS} if req.generate_art else {},
         "art_enabled": {k: True for k in ART_KINDS},
@@ -169,6 +180,11 @@ async def update_table(table_id: str, upd: TableUpdate):
         data["story"] = sanitize_story(data["story"], t.get("name"))
     if "name" in data:
         data["name"] = data["name"].strip()[:32] or t["name"]
+    if "parts_kit_id" in data:
+        kid = data["parts_kit_id"]
+        if kid and not await db.parts_kits.find_one({"id": kid, "is_deleted": False}):
+            raise HTTPException(404, "Parts kit not found")
+        data["parts_kit_id"] = kid or None
     data["updated_at"] = now()
     await db.tables.update_one({"id": table_id}, {"$set": data})
     return await get_table_or_404(table_id)
@@ -256,6 +272,8 @@ async def download(path: str):
                     headers={"Cache-Control": "public, max-age=86400"})
 
 
+parts_router = build_router(db)
+api.include_router(parts_router)
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
                    allow_methods=["*"], allow_headers=["*"])
@@ -269,6 +287,7 @@ async def startup():
     try:
         await asyncio.to_thread(init_storage)
         await seed_brand_assets()
+        await parts_router.seed()
     except Exception as e:
         logger.error(f"Storage init/seed failed: {e}")
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, Upload, Loader2 } from "lucide-react";
 import { Header } from "../components/Header";
+import { PartsKits } from "../components/PartsKits";
 import { useAssets } from "../hooks/useTableMedia";
 import { errMsg, fileUrl, http } from "../lib/api";
 
@@ -80,6 +81,7 @@ export default function BrandKit() {
             </div>
           ))}
         </div>
+        <PartsKits />
       </main>
     </div>
   );

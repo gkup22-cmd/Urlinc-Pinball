@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Sparkles, Camera, BadgeCheck } from "lucide-react";
+import { Loader2, Sparkles, Camera, BadgeCheck, Boxes } from "lucide-react";
+import { KitSelect, usePartsKits } from "./PartsKits";
 import { toast } from "sonner";
 import { Switch } from "./ui/switch";
 import { Checkbox } from "./ui/checkbox";
@@ -18,6 +19,8 @@ export const ThemeForge = () => {
   const [brandOn, setBrandOn] = useState(false);
   const [brand, setBrand] = useState({ asset_ids: [], bumperCaps: true, backglassLogo: true, apronLogo: true });
   const [busy, setBusy] = useState(false);
+  const { kits } = usePartsKits();
+  const [kitId, setKitId] = useState(null);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -35,6 +38,7 @@ export const ThemeForge = () => {
       const { data } = await http.post("/tables/generate", {
         theme,
         generate_art: art,
+        parts_kit_id: kitId,
         brand: { ...brand, enabled: brandOn },
       });
       toast.success(`"${data.name}" is ready to play`);
@@ -98,6 +102,15 @@ export const ThemeForge = () => {
           <Switch checked={brandOn} onCheckedChange={setBrandOn} disabled={busy} data-testid="brand-assets-switch" />
         </label>
       </div>
+
+      <label className="option-row mt-3" data-testid="option-parts-kit">
+        <Boxes className="h-5 w-5 text-[var(--cyan)]" />
+        <div className="flex-1">
+          <p className="font-semibold">Hardware</p>
+          <p className="text-xs text-muted-foreground">Use a photo-real parts kit for bumpers, flippers, targets & lights</p>
+        </div>
+        <div className="w-48"><KitSelect kits={kits} value={kitId} onChange={setKitId} testid="forge-parts-kit-select" /></div>
+      </label>
 
       {brandOn && (
         <div className="mt-4 space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4" data-testid="brand-options">

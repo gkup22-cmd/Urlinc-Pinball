@@ -17,6 +17,7 @@ export class PinballGame {
     this.onGameOver = onGameOver || (() => {});
     this.walls = G.buildWalls();
     this.images = {};
+    this.parts = {};
     this.brandImgs = [];
     this.flippers = { left: { angle: G.REST, pressed: false, w: 0 }, right: { angle: G.REST, pressed: false, w: 0 } };
     this.balls = [];
@@ -59,6 +60,7 @@ export class PinballGame {
 
   setImages(images, brandImgs) {
     this.images = images || {};
+    this.parts = this.images.parts || {};
     this.brandImgs = brandImgs || [];
     this.rebuildStatic();
   }
@@ -70,6 +72,7 @@ export class PinballGame {
   bumperImg(i) {
     const b = this.table.brand;
     if (b?.enabled && b.bumperCaps && this.brandImgs.length) return this.brandImgs[i % this.brandImgs.length];
+    if (this.parts.bumper_cap) return null;
     return this.images.caps || null;
   }
 
