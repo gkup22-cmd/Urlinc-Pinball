@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Wand2, Clapperboard } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Field, TextInput } from "./Fields";
+import { Field, SliderField, TextInput } from "./Fields";
 import { FONTS, loadThemeFonts } from "../../game/fonts";
 import { StoryCrawl } from "../StoryCrawl";
 import { errMsg, http } from "../../lib/api";
@@ -77,6 +77,7 @@ export const StoryTab = ({ draft, patch }) => {
           <Field label="Episode line"><TextInput value={story.episode} maxLength={40} onChange={(e) => setStory("episode", e.target.value)} testid="story-episode-input" /></Field>
           <Field label="Story title"><TextInput value={story.title} maxLength={60} onChange={(e) => setStory("title", e.target.value)} testid="story-title-input" /></Field>
         </div>
+        <SliderField label="Scroll speed" value={story.speed || 1} min={0.5} max={2.5} step={0.1} onChange={(v) => setStory("speed", v)} testid="story-speed-slider" format={(v) => `${v.toFixed(1)}×${v < 1 ? " slower" : v > 1 ? " faster" : ""}`} />
         <Field label="Crawl text" hint="Blank line between paragraphs">
           <textarea
             className="ed-input min-h-[220px] py-2 leading-relaxed"

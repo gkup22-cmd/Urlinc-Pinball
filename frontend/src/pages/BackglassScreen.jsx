@@ -16,12 +16,17 @@ export default function BackglassScreen() {
   const { assets } = useAssets();
   const [state, setState] = useState(null);
   const [story, setStory] = useState(false);
+  const [storyPaused, setStoryPaused] = useState(false);
 
   useEffect(() => {
     const ch = new BroadcastChannel(channelName(id));
     ch.onmessage = ({ data }) => {
       if (data.type === "state") setState(data.state);
-      if (data.type === "story") setStory(data.on);
+      if (data.type === "story") {
+        setStory(data.on);
+        setStoryPaused(false);
+      }
+      if (data.type === "storyPause") setStoryPaused(data.paused);
       if (data.type === "table") setTable(data.table);
     };
     ch.postMessage({ type: "hello" });
@@ -63,7 +68,7 @@ export default function BackglassScreen() {
         </button>
       </div>
       <div className="relative text-2xl"><DMD table={table} state={state} large /></div>
-      {story && <StoryCrawl table={table} onDone={() => setStory(false)} showSkip={false} />}
+      {story && <StoryCrawl table={table} onDone={() => setStory(false)} showSkip={false} paused={storyPaused} />}
     </div>
   );
 }

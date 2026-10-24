@@ -182,7 +182,7 @@ export default function Play() {
           {cabinetUrl && <img src={cabinetUrl} alt="Cabinet" className="w-full rounded-lg" />}
         </DialogContent>
       </Dialog>
-      {story && <StoryCrawl table={table} onDone={() => showStory(false)} />}
+      {story && <StoryCrawl table={table} onDone={() => showStory(false)} onPauseChange={(paused) => chan.current?.postMessage({ type: "storyPause", paused })} />}
     </div>
   );
 }

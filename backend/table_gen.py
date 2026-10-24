@@ -131,7 +131,8 @@ def _sanitize_rails(raw_rails, placed):
 def sanitize_story(st, name=""):
     st = st if isinstance(st, dict) else {}
     crawl = [str(p)[:600] for p in (st.get("crawl") or []) if p][:6]
-    return {"title": str(st.get("title") or name or "")[:60], "episode": str(st.get("episode") or "")[:40], "crawl": crawl}
+    return {"title": str(st.get("title") or name or "")[:60], "episode": str(st.get("episode") or "")[:40], "crawl": crawl,
+            "speed": _num(st.get("speed"), 0.5, 2.5, 1.0)}
 
 
 def sanitize_layout(data: dict) -> dict:
