@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const DMD = ({ table, state }) => {
+export const DMD = ({ table, state, large = false }) => {
   const attract = table.backglass?.attract || ["PRESS START"];
   const [i, setI] = useState(0);
   useEffect(() => {
@@ -24,7 +24,7 @@ export const DMD = ({ table, state }) => {
         </span>
       </div>
       <div
-        className={`dmd-text my-1 text-center font-display font-black leading-tight ${String(main).length > 16 ? "text-base sm:text-lg" : "text-2xl sm:text-3xl"}`}
+        className={`dmd-text my-1 text-center font-display font-black leading-tight ${large ? "text-4xl lg:text-6xl" : String(main).length > 16 ? "text-base sm:text-lg" : "text-2xl sm:text-3xl"}`}
         style={{ color }}
         data-testid="dmd-main-text"
       >

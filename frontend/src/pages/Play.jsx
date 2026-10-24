@@ -1,7 +1,9 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { BookmarkPlus, Pencil, Box, Volume2, VolumeX, Loader2, Keyboard } from "lucide-react";
+import { BookmarkPlus, Pencil, Box, Volume2, VolumeX, Loader2, Keyboard, MonitorUp, BookOpen } from "lucide-react";
+import { StoryCrawl } from "../components/StoryCrawl";
+import { channelName, openBackglassScreen } from "../lib/secondScreen";
 import { Dialog, DialogContent, DialogTitle } from "../components/ui/dialog";
 import { Header } from "../components/Header";
 import { Backglass } from "../components/Backglass";
@@ -21,7 +23,51 @@ export default function Play() {
   const [state, setState] = useState(null);
   const [mute, setMute] = useState(false);
   const [cabinet, setCabinet] = useState(false);
-  useKeyboardControls(gameRef, !!table);
+  const [story, setStory] = useState(false);
+  const storyShown = useRef(false);
+  const storyRequested = useRef(false);
+  const chan = useRef(null);
+  const stateRef = useRef(null);
+  const tableRef = useRef(null);
+  tableRef.current = table;
+  useKeyboardControls(gameRef, !!table && !story);
+
+  useEffect(() => {
+    const ch = new BroadcastChannel(channelName(id));
+    ch.onmessage = ({ data }) => {
+      if (data.type === "hello") {
+        if (tableRef.current) ch.postMessage({ type: "table", table: tableRef.current });
+        ch.postMessage({ type: "state", state: stateRef.current });
+      }
+    };
+    chan.current = ch;
+    return () => ch.close();
+  }, [id]);
+
+  const onState = useCallback((s) => {
+    setState(s);
+    stateRef.current = s;
+    chan.current?.postMessage({ type: "state", state: s });
+  }, []);
+
+  const showStory = useCallback((on) => {
+    setStory(on);
+    chan.current?.postMessage({ type: "story", on });
+  }, []);
+
+  useEffect(() => {
+    if (!table) return;
+    chan.current?.postMessage({ type: "table", table });
+    if (table.story?.crawl?.length) {
+      if (!storyShown.current && !stateRef.current?.started) {
+        storyShown.current = true;
+        showStory(true);
+      }
+    } else if (!storyRequested.current) {
+      storyRequested.current = true;
+      http.post(`/tables/${id}/story`).then((r) => setTable((t) => ({ ...t, story: r.data.story, style: r.data.style }))).catch(() => {});
+    }
+  }, [table, id, setTable, showStory]);
 
   const onGameOver = async (score) => {
     try {
@@ -73,6 +119,10 @@ export default function Play() {
             {cabinetUrl && (
               <button onClick={() => setCabinet(true)} className="ghost-btn" data-testid="view-cabinet-btn"><Box className="h-4 w-4" /> Cabinet</button>
             )}
+            <button onClick={() => openBackglassScreen(id)} className="ghost-btn" data-testid="second-screen-btn"><MonitorUp className="h-4 w-4" /> Back-glass on 2nd screen</button>
+            {table.story?.crawl?.length > 0 && (
+              <button onClick={() => showStory(true)} className="ghost-btn" data-testid="replay-story-btn"><BookOpen className="h-4 w-4" /> Story</button>
+            )}
             <button
               onClick={() => { setMute(!mute); setMuted(!mute); }}
               className="ghost-btn" aria-label="Toggle sound" data-testid="toggle-sound-btn"
@@ -101,7 +151,7 @@ export default function Play() {
             <PlayfieldCanvas
               table={table}
               gameRef={gameRef}
-              onState={setState}
+              onState={onState}
               onGameOver={onGameOver}
               className="w-[min(92vw,460px)] lg:h-[calc(100vh-14rem)] lg:w-auto"
               onPointerDown={canvasTouch(true)}
@@ -132,6 +182,7 @@ export default function Play() {
           {cabinetUrl && <img src={cabinetUrl} alt="Cabinet" className="w-full rounded-lg" />}
         </DialogContent>
       </Dialog>
+      {story && <StoryCrawl table={table} onDone={() => showStory(false)} />}
     </div>
   );
 }

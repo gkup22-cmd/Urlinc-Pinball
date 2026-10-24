@@ -17,7 +17,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 from storage import APP_NAME, get_object, init_storage, put_object  # noqa: E402
-from table_gen import art_prompt, generate_layout, sanitize_layout  # noqa: E402
+from table_gen import art_prompt, generate_layout, generate_story, sanitize_layout, sanitize_story  # noqa: E402
 
 client = AsyncIOMotorClient(os.environ['MONGO_URL'])
 db = client[os.environ['DB_NAME']]
@@ -27,7 +27,7 @@ api = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-ART_KINDS = ["playfield", "backglass", "cabinet"]
+ART_KINDS = ["playfield", "backglass", "cabinet", "caps"]
 NO_ID = {"_id": 0}
 
 
@@ -58,6 +58,9 @@ class TableUpdate(BaseModel):
     rollovers: Optional[list] = None
     ramps: Optional[list] = None
     saucers: Optional[list] = None
+    rails: Optional[list] = None
+    style: Optional[dict] = None
+    story: Optional[dict] = None
     missions: Optional[list] = None
     scoring: Optional[dict] = None
     physics: Optional[dict] = None
@@ -156,12 +159,14 @@ async def get_table(table_id: str):
 async def update_table(table_id: str, upd: TableUpdate):
     t = await get_table_or_404(table_id)
     data = upd.model_dump(exclude_none=True)
-    layout_keys = {"palette", "bumpers", "targets", "rollovers", "ramps", "saucers", "missions", "scoring", "physics", "backglass"}
+    layout_keys = {"palette", "bumpers", "targets", "rollovers", "ramps", "saucers", "rails", "style", "missions", "scoring", "physics", "backglass"}
     if layout_keys & data.keys():
         merged = {k: data.get(k, t.get(k)) for k in layout_keys}
         clean = sanitize_layout(merged)
         for k in layout_keys & data.keys():
             data[k] = clean[k]
+    if "story" in data:
+        data["story"] = sanitize_story(data["story"], t.get("name"))
     if "name" in data:
         data["name"] = data["name"].strip()[:32] or t["name"]
     data["updated_at"] = now()
@@ -187,6 +192,18 @@ async def generate_art(table_id: str, req: ArtRequest):
     await db.tables.update_one({"id": table_id}, {"$set": {f"art_status.{k}": "generating" for k in kinds}})
     start_art(table_id, kinds)
     return {"ok": True, "kinds": kinds}
+
+
+@api.post("/tables/{table_id}/story")
+async def write_story(table_id: str):
+    t = await get_table_or_404(table_id)
+    try:
+        res = await generate_story(t)
+    except Exception as e:
+        logger.exception("Story generation failed")
+        raise HTTPException(502, f"Story generation failed, please try again ({str(e)[:80]})")
+    await db.tables.update_one({"id": table_id}, {"$set": {**res, "updated_at": now()}})
+    return await get_table_or_404(table_id)
 
 
 @api.post("/tables/{table_id}/score")

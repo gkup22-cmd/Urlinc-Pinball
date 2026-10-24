@@ -8,6 +8,20 @@ import uuid
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 
 EVENTS = ["bumper", "target", "rollover", "ramp", "saucer", "sling"]
+FONTS = {
+    "Creepster": "horror, haunted, zombies", "Nosifer": "vampires, gore, blood", "Pirata One": "pirates, gothic, dark fantasy",
+    "Cinzel Decorative": "ancient myths, gods, epic, Rome, Greece", "Uncial Antiqua": "celtic, wizards, high fantasy",
+    "MedievalSharp": "knights, castles, dragons", "Rye": "wild west, cowboys, saloon", "Bungee": "urban, street, arcade, sports",
+    "Monoton": "80s retro, synthwave, disco neon", "Audiowide": "racing, futuristic cars, cyber", "Orbitron": "space, sci-fi, tech",
+    "Press Start 2P": "8-bit video games, retro computers", "Special Elite": "spy, noir, detective, typewriter",
+    "Black Ops One": "military, action, heist", "Metal Mania": "heavy metal, rock, hell", "Bangers": "comic book, superheroes, cartoons",
+    "Righteous": "70s, groovy, surf, tiki", "Fredoka": "cute, kids, candy, animals", "Playfair Display": "luxury, elegant, casino, royalty",
+    "Faster One": "speed, motorsport, jets",
+}
+MATERIALS = ["chrome", "gold", "copper", "neon", "crystal"]
+AMBIENTS = ["fog", "bubbles", "embers", "stars", "rain", "snow", "lightning", "leaves", "sparks", "matrix", "petals", "bats", "fireflies", "none"]
+TARGET_STYLES = ["drop", "flag", "shield", "gem", "post"]
+HABITRAILS = ["left", "right", "none"]
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 SYSTEM = """You are a world-class pinball table designer (think Zen Studios). You design a unique 2D pinball table from a theme and reply with ONLY a JSON object, no prose, no markdown.
@@ -20,17 +34,22 @@ JSON schema:
  "tagline": "one-line backglass slogan",
  "palette": {"bg":"#hex very dark base","primary":"#hex main neon","secondary":"#hex","accent":"#hex flipper/highlight","glow":"#hex","dmd":"#hex DMD dot color"},
  "bumpers": [ {"x":int,"y":int,"r":18-28,"points":int,"label":"1-2 word"} ]  (3-5 items, usually clustered),
- "targets": [ {"x":int,"y":int,"w":24-36,"angle":radians -1.2..1.2,"points":int,"label":"word"} ] (3-6 items, often a bank in a row),
+ "targets": [ {"x":int,"y":int,"w":24-36,"angle":radians -1.2..1.2,"points":int,"label":"word","style":"drop|flag|shield|gem|post"} ] (3-6 knock-down targets, often a bank in a row; style fits the theme e.g. flag for pirates/racing/castles, shield for knights, gem for treasure/magic, post for sci-fi),
  "rollovers": [ {"x":int,"y":int,"points":int,"label":"1 letter or short"} ] (3-4 top lanes around y 140-200),
- "ramps": [ {"x":int,"y":int,"angle":radians direction the shot travels (-1.57 = straight up),"points":int,"label":"shot name"} ] (2-3 shot gates),
+ "ramps": [ {"x":int,"y":int,"angle":radians direction the shot travels (-1.57 = straight up),"points":int,"label":"shot name","habitrail":"left|right|none"} ] (2-3 shot entrances; habitrail left/right = a chrome wire ramp carries the ball over the playfield and drops it into that side's inlane, give 1-2 ramps a habitrail),
+ "rails": [ {"points":[[x,y],[x,y],[x,y]],"label":"name"} ] (0-2 curved metal guide rails the ball bounces off, 3-5 points with y strictly increasing along the list, each 80-200px long, used to shape lanes/orbits around bumpers; keep 40px from every other element),
  "saucers": [ {"x":int,"y":int,"angle":eject radians,"points":int,"label":"name"} ] (0-2),
  "missions": [ {"title":"themed mission name","description":"short instruction","event":"bumper|target|rollover|ramp|saucer|sling","count":int 3-20,"reward":int,"multiball":bool} ] (4-6 items, at most 2 multiball),
  "scoring": {"comboMax":2-6,"extraBallScore":int,"targetBankBonus":int,"rolloverBonus":int,"slingPoints":int},
  "physics": {"gravity":0.8-1.25,"flipperPower":0.9-1.2,"bounce":0.9-1.3},
  "backglass": {"title":"same or stylized name","subtitle":"short","tagline":"short","attract":["3-5 short DMD attract messages in theme"],"style":"one sentence describing backglass art"},
- "art_brief": "two sentences describing the visual world of this table for an illustrator"
+ "art_brief": "two sentences describing the visual world of this table for an illustrator",
+ "style": {"font":"one of FONTS","material":"chrome|gold|copper|neon|crystal (bumper/rail hardware finish)","ambient":"one of AMBIENTS (animated particles drifting over the playfield)"},
+ "story": {"title":"dramatic story title","episode":"e.g. EPISODE IV or CHAPTER ONE or a short era line","crawl":["3-4 paragraphs, 2-3 vivid sentences each, an exciting original backstory for the table that ends by putting the player in charge of the flippers"]}
 }
-Make every table feel different: vary layout, counts, scoring values and missions to match the theme."""
+FONTS (pick the one matching the theme): """ + "; ".join(f"{k} = {v}" for k, v in FONTS.items()) + """
+AMBIENTS: """ + ", ".join(AMBIENTS) + """
+Make every table feel different: vary the bumper cluster position (left, right, center, high, low, spread), the number and direction of shots, the rails and target banks, the scoring values and missions to match the theme."""
 
 
 def _rand_palette():
@@ -71,6 +90,45 @@ def _place(kind, el, placed):
     return False
 
 
+def _seg_dist(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    l2 = dx * dx + dy * dy or 1
+    t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / l2))
+    return math.hypot(px - ax - dx * t, py - ay - dy * t)
+
+
+def _sanitize_rails(raw_rails, placed):
+    rails = []
+    for raw in raw_rails[:3]:
+        if not isinstance(raw, dict):
+            continue
+        if "pts" in raw:
+            cx, cy = _num(raw.get("x"), 0, 500, 250), _num(raw.get("y"), 0, 900, 300)
+            pts = [(cx + _num(p[0], -200, 200, 0), cy + _num(p[1], -200, 200, 0)) for p in raw["pts"] if isinstance(p, (list, tuple)) and len(p) == 2]
+        else:
+            pts = [(_num(p[0], 0, 500, 250), _num(p[1], 0, 900, 300)) for p in (raw.get("points") or []) if isinstance(p, (list, tuple)) and len(p) == 2]
+        pts = sorted(pts[:5], key=lambda p: p[1])
+        if len(pts) < 2 or any(b[1] - a[1] < 4 for a, b in zip(pts, pts[1:])):
+            continue
+        if not all(_inside(x, y, 18) for x, y in pts):
+            continue
+        clash = any(_seg_dist(px, py, *a, *b) < pr + 26 for a, b in zip(pts, pts[1:]) for px, py, pr in placed)
+        if clash:
+            continue
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        rails.append({"id": raw.get("id") or uuid.uuid4().hex[:8], "x": int(cx), "y": int(cy),
+                      "pts": [[int(x - cx), int(y - cy)] for x, y in pts], "label": str(raw.get("label") or "")[:16]})
+        placed.extend((x, y, 6) for x, y in pts)
+    return rails
+
+
+def sanitize_story(st, name=""):
+    st = st if isinstance(st, dict) else {}
+    crawl = [str(p)[:600] for p in (st.get("crawl") or []) if p][:6]
+    return {"title": str(st.get("title") or name or "")[:60], "episode": str(st.get("episode") or "")[:40], "crawl": crawl}
+
+
 def sanitize_layout(data: dict) -> dict:
     out = {}
     pal = data.get("palette") or {}
@@ -97,6 +155,10 @@ def sanitize_layout(data: dict) -> dict:
                 el["angle"] = _num(raw.get("angle"), -1.6, 1.6, 0)
             if kind in ("ramps", "saucers"):
                 el["angle"] = _num(raw.get("angle"), -3.2, 3.2, -1.57)
+            if kind == "targets":
+                el["style"] = raw.get("style") if raw.get("style") in TARGET_STYLES else None
+            if kind == "ramps":
+                el["habitrail"] = raw.get("habitrail") if raw.get("habitrail") in HABITRAILS else "none"
             if _place(kind, el, placed):
                 items.append(el)
         out[kind] = items
@@ -107,6 +169,16 @@ def sanitize_layout(data: dict) -> dict:
             el = {"id": uuid.uuid4().hex[:8], "x": x, "y": y, "r": 22, "points": 500, "label": ""}
             if _place("bumpers", el, placed):
                 out["bumpers"].append(el)
+    out["rails"] = _sanitize_rails(data.get("rails") or [], placed)
+    st = data.get("style") or {}
+    out["style"] = {
+        "font": st.get("font") if st.get("font") in FONTS else "Orbitron",
+        "material": st.get("material") if st.get("material") in MATERIALS else "chrome",
+        "ambient": st.get("ambient") if st.get("ambient") in AMBIENTS else "sparks",
+        "targetStyle": st.get("targetStyle") if st.get("targetStyle") in TARGET_STYLES else "drop",
+    }
+    for t in out["targets"]:
+        t["style"] = t.get("style") or out["style"]["targetStyle"]
     missions = []
     for m in (data.get("missions") or [])[:8]:
         if not isinstance(m, dict):
@@ -174,7 +246,40 @@ async def generate_layout(theme: str, brand_names: list) -> dict:
     layout = sanitize_layout(raw)
     layout["name"] = str(raw.get("name") or theme.title())[:32]
     layout["art_brief"] = str(raw.get("art_brief") or "")[:400]
+    layout["story"] = sanitize_story(raw.get("story"), layout["name"])
     return layout
+
+
+async def _ask(system: str, prompt: str) -> str:
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"tbl-{uuid.uuid4()}",
+                   system_message=system).with_model("anthropic", "claude-sonnet-5-5")
+    text = ""
+    async for ev in chat.stream_message(UserMessage(text=prompt)):
+        if isinstance(ev, TextDelta):
+            text += ev.content
+        elif isinstance(ev, StreamDone):
+            break
+    return text
+
+
+STORY_SYSTEM = """You write the opening crawl for a themed pinball table, like a Star Wars intro. Reply ONLY with JSON:
+{"story":{"title":"dramatic title","episode":"e.g. EPISODE IV or CHAPTER ONE","crawl":["3-4 paragraphs, 2-3 vivid sentences each, ending by putting the player at the flippers"]},
+ "style":{"font":"one of FONTS","ambient":"one of AMBIENTS","material":"chrome|gold|copper|neon|crystal"}}
+FONTS: """ + "; ".join(f"{k} = {v}" for k, v in FONTS.items()) + "\nAMBIENTS: " + ", ".join(AMBIENTS)
+
+
+async def generate_story(t: dict) -> dict:
+    missions = "; ".join(m["title"] for m in t.get("missions", []))
+    text = await _ask(STORY_SYSTEM, f"Table '{t.get('name')}', theme: {t.get('theme')}. Missions: {missions}. Tagline: {t.get('backglass', {}).get('tagline')}")
+    raw = _extract_json(text)
+    st = raw.get("style") or {}
+    style = dict(t.get("style") or {})
+    if not t.get("style"):
+        style = {"font": st.get("font") if st.get("font") in FONTS else "Orbitron",
+                 "material": st.get("material") if st.get("material") in MATERIALS else "chrome",
+                 "ambient": st.get("ambient") if st.get("ambient") in AMBIENTS else "sparks",
+                 "targetStyle": "drop"}
+    return {"story": sanitize_story(raw.get("story"), t.get("name")), "style": style}
 
 
 def art_prompt(kind: str, t: dict) -> str:
@@ -190,5 +295,9 @@ def art_prompt(kind: str, t: dict) -> str:
     if kind == "backglass":
         return (f"Photo-realistic illuminated pinball machine backglass artwork, the title '{name}' in bold stylized lettering, themed '{theme}'. "
                 f"{brief} {t.get('backglass', {}).get('style', '')} Dramatic characters and scenery, backlit translucent glass glow, {colors}. Landscape composition.")
+    if kind == "caps":
+        return (f"Photo-realistic macro product photo, straight top-down, of ONE round glossy pinball pop-bumper cap for a '{theme}' themed table. "
+                f"Domed translucent cap with an embossed {brief[:160]} emblem in the center, polished {t.get('style', {}).get('material', 'chrome')} rim, "
+                f"glowing from within, {colors}. Perfectly centered circle filling the frame on a pure black background, no text.")
     return (f"Photo-realistic studio product photograph of a complete modern pinball machine cabinet themed '{theme}' named '{name}', "
             f"three-quarter front view, illuminated backglass, side cabinet artwork, chrome legs and lockdown bar, {colors}, in a moody dim arcade with reflections.")

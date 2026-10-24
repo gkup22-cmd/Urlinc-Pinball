@@ -70,8 +70,43 @@ export function targetEnds(t) {
   return { ax: t.x - hx, ay: t.y - hy, bx: t.x + hx, by: t.y + hy };
 }
 
-export const KINDS = ["bumpers", "targets", "rollovers", "ramps", "saucers"];
+export const KINDS = ["bumpers", "targets", "rollovers", "ramps", "saucers", "rails"];
 
 export function elementRadius(kind, el) {
-  return { bumpers: el.r || 22, targets: (el.w || 30) / 2 + 4, rollovers: 14, ramps: 20, saucers: 16 }[kind];
+  return { bumpers: el.r || 22, targets: (el.w || 30) / 2 + 4, rollovers: 14, ramps: 20, saucers: 16, rails: 18 }[kind];
+}
+
+export const railPoints = (r) => (r.pts || []).map(([dx, dy]) => [r.x + dx, r.y + dy]);
+
+const INLANE_X = { left: 41, right: 426 };
+
+export function habitrailPath(ramp) {
+  const side = ramp.habitrail;
+  if (side !== "left" && side !== "right") return null;
+  const X = INLANE_X[side];
+  const d = { x: Math.cos(ramp.angle), y: Math.sin(ramp.angle) };
+  const p0 = [ramp.x, ramp.y];
+  const p1 = [Math.max(70, Math.min(400, ramp.x + d.x * 120)), Math.max(115, ramp.y + d.y * 120)];
+  const p2 = [side === "left" ? 60 : 405, 200];
+  const p3 = [X, 588];
+  const pts = [];
+  for (let i = 0; i <= 48; i++) {
+    const t = i / 48;
+    const u = 1 - t;
+    pts.push([
+      u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+      u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+    ]);
+  }
+  const lens = [0];
+  for (let i = 1; i < pts.length; i++) lens.push(lens[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  return { pts, lens, total: lens[lens.length - 1] };
+}
+
+export function pointAt(path, dist) {
+  const { pts, lens } = path;
+  let i = 1;
+  while (i < lens.length - 1 && lens[i] < dist) i++;
+  const t = Math.min(1, Math.max(0, (dist - lens[i - 1]) / (lens[i] - lens[i - 1] || 1)));
+  return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t];
 }

@@ -7,6 +7,7 @@ const KINDS = [
   ["playfield", "Playfield", "Printed art under the bumpers and flippers", "aspect-[5/9]"],
   ["backglass", "Back-glass", "Illuminated header art above the score display", "aspect-[5/3]"],
   ["cabinet", "Machine cabinet", "Full machine product shot", "aspect-square"],
+  ["caps", "Bumper caps", "Photo-real emblem caps on every pop bumper", "aspect-square"],
 ];
 
 export const ArtTab = ({ draft, setDraft, dirty }) => {

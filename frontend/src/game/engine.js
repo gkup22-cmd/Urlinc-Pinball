@@ -1,5 +1,7 @@
 import * as G from "./geometry";
-import { buildStatic, drawFrame } from "./render";
+import { buildStatic, drawFrame } from "./renderer";
+import { Ambient } from "./ambient";
+import { loadThemeFonts, themeFonts } from "./fonts";
 import { play } from "./sound";
 
 const SUB = 8;
@@ -37,8 +39,22 @@ export class PinballGame {
   }
 
   setTable(table) {
+    const prev = this.table;
     this.table = table;
+    this.fonts = themeFonts(table);
+    this.walls = G.buildWalls();
+    for (const r of table.rails || []) {
+      const pts = G.railPoints(r);
+      for (let i = 1; i < pts.length; i++) this.walls.push({ ax: pts[i - 1][0], ay: pts[i - 1][1], bx: pts[i][0], by: pts[i][1], rad: 3 });
+    }
+    this.habitrails = {};
+    for (const r of table.ramps || []) {
+      const path = G.habitrailPath(r);
+      if (path) this.habitrails[r.id] = path;
+    }
+    if (!this.ambient || prev?.style?.ambient !== table.style?.ambient) this.ambient = new Ambient(table.style?.ambient);
     this.rebuildStatic();
+    loadThemeFonts(table).then(() => this.running && this.rebuildStatic());
   }
 
   setImages(images, brandImgs) {
@@ -48,13 +64,13 @@ export class PinballGame {
   }
 
   rebuildStatic() {
-    this.staticLayer = buildStatic(this.table, this.images);
+    this.staticLayer = buildStatic(this.table, this.images, this.fonts);
   }
 
   bumperImg(i) {
     const b = this.table.brand;
-    if (!b?.enabled || !b.bumperCaps || !this.brandImgs.length) return null;
-    return this.brandImgs[i % this.brandImgs.length];
+    if (b?.enabled && b.bumperCaps && this.brandImgs.length) return this.brandImgs[i % this.brandImgs.length];
+    return this.images.caps || null;
   }
 
   resize() {
@@ -144,9 +160,11 @@ export class PinballGame {
     if (this.missionProgress >= need) {
       this.award(m.reward * (1 + this.level));
       this.msg(`${m.title.toUpperCase()} COMPLETE`, 2.5);
+      this.flash = { color: this.table.palette.primary, life: 1.2 };
       play("mission");
       if (m.multiball) {
         this.msg("MULTIBALL!", 2.5);
+        this.flash = { color: this.table.palette.secondary, life: 1.5 };
         this.spawnBall(true);
         setTimeout(() => this.running && this.started && this.spawnBall(true), 600);
       }
@@ -280,7 +298,7 @@ export class PinballGame {
     for (const s of this.walls) {
       if (s.gate && b.inLane) continue;
       const c = G.closest(b.x, b.y, s.ax, s.ay, s.bx, s.by);
-      const hit = this.resolve(b, c.x, c.y, 0, s.kick ? 0.3 : 0.4);
+      const hit = this.resolve(b, c.x, c.y, s.rad || 0, s.kick ? 0.3 : 0.4);
       if (hit && s.kick && hit.vn < -120) {
         b.vx += hit.nx * 520 * bounce;
         b.vy += hit.ny * 520 * bounce;
@@ -319,6 +337,7 @@ export class PinballGame {
       if (hit && hit.vn < -80) {
         this.down[tg.id] = true;
         this.fx[tg.id] = 0.15;
+        this.fx["fall-" + tg.id] = 0.3;
         this.award(tg.points, tg.x, tg.y, p.accent);
         play("target");
         this.event("target");
@@ -326,6 +345,7 @@ export class PinballGame {
         if (all) {
           this.award(t.scoring.targetBankBonus || 25000);
           this.msg("TARGET BANK!", 2);
+          this.flash = { color: t.palette.accent, life: 0.8 };
           play("bank");
           setTimeout(() => (this.down = {}), 1200);
         }
@@ -357,8 +377,13 @@ export class PinballGame {
         this.award(r.points, r.x, r.y, p.accent);
         play("ramp");
         this.event("ramp");
-        b.vx += dir.x * 250;
-        b.vy += dir.y * 250;
+        const path = this.habitrails[r.id];
+        if (path) {
+          b.ride = { path, d: 0 };
+        } else {
+          b.vx += dir.x * 250;
+          b.vy += dir.y * 250;
+        }
       }
       if (!inside) b.sensors[r.id] = false;
     }
@@ -410,6 +435,19 @@ export class PinballGame {
     const gravity = 1100 * (this.table.physics.gravity || 1);
     this.stepFlippers();
     for (const b of [...this.balls]) {
+      if (b.ride) {
+        b.ride.d += 950 * DT;
+        const [x, y] = G.pointAt(b.ride.path, b.ride.d);
+        b.x = x;
+        b.y = y;
+        if (b.ride.d >= b.ride.path.total) {
+          b.ride = null;
+          b.vx = 0;
+          b.vy = 220;
+          b.sensors = {};
+        }
+        continue;
+      }
       if (b.captured) {
         const { s, until } = b.captured;
         b.x = s.x;
@@ -439,6 +477,15 @@ export class PinballGame {
         }
       }
       this.collideBall(b);
+      if (!b.inLane && b.y < 690 && Math.hypot(b.vx, b.vy) < 30) {
+        b.still = (b.still || 0) + DT;
+        if (b.still > 2.5) {
+          b.still = 0;
+          b.vx = (Math.random() - 0.5) * 500;
+          b.vy = -450;
+          this.msg("BALL SEARCH", 1);
+        }
+      } else b.still = 0;
       if (b.y > G.H + 30 || b.x < -50 || b.x > G.W + 50) this.drain(b);
     }
     if (this.balls.length > 1) this.collideBalls();
@@ -457,6 +504,11 @@ export class PinballGame {
       if (this.combo > 1 && this.time > this.comboUntil) this.combo = 1;
     }
     for (const k in this.fx) this.fx[k] -= dt;
+    this.ambient?.update(dt, this.time);
+    if (this.flash) {
+      this.flash.life -= dt;
+      if (this.flash.life <= 0) this.flash = null;
+    }
     this.particles.forEach((p) => {
       p.x += p.vx * dt;
       p.y += p.vy * dt;

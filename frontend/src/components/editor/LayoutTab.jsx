@@ -7,8 +7,10 @@ const ADD = [
   ["rollovers", "Top lane", { points: 500, label: "" }],
   ["ramps", "Shot", { angle: -1.57, points: 5000, label: "Shot" }],
   ["saucers", "Saucer", { angle: 1.2, points: 10000, label: "" }],
+  ["rails", "Rail", { pts: [[-12, -55], [0, 0], [12, 55]], label: "" }],
 ];
-const LIMITS = { bumpers: 6, targets: 8, rollovers: 5, ramps: 4, saucers: 2 };
+const LIMITS = { bumpers: 6, targets: 8, rollovers: 5, ramps: 4, saucers: 2, rails: 3 };
+const SEL = "h-10 w-full rounded-xl border border-white/10 bg-black/40 px-2 text-sm";
 
 export const LayoutTab = ({ draft, patch, selected, setSelected }) => {
   const add = (kind, defaults) => {
@@ -43,7 +45,28 @@ export const LayoutTab = ({ draft, patch, selected, setSelected }) => {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Label"><TextInput value={el.label} maxLength={16} onChange={(e) => set("label", e.target.value)} testid="element-label-input" /></Field>
-            <Field label="Points"><NumInput value={el.points} min={10} onChange={(v) => set("points", v)} testid="element-points-input" /></Field>
+            {el.points !== undefined && <Field label="Points"><NumInput value={el.points} min={10} onChange={(v) => set("points", v)} testid="element-points-input" /></Field>}
+            {selected.kind === "targets" && (
+              <Field label="Target style">
+                <select className={SEL} value={el.style || "drop"} onChange={(e) => set("style", e.target.value)} data-testid="element-target-style-select">
+                  {["drop", "flag", "shield", "gem", "post"].map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </Field>
+            )}
+            {selected.kind === "ramps" && (
+              <Field label="Wire ramp">
+                <select className={SEL} value={el.habitrail || "none"} onChange={(e) => set("habitrail", e.target.value)} data-testid="element-habitrail-select">
+                  <option value="none">None (shot lane)</option>
+                  <option value="left">To left inlane</option>
+                  <option value="right">To right inlane</option>
+                </select>
+              </Field>
+            )}
+            {selected.kind === "rails" && (
+              <Field label="Shape">
+                <button className="ghost-btn !h-10 w-full justify-center" onClick={() => set("pts", el.pts.map(([x, y]) => [-x, y]))} data-testid="element-rail-mirror-btn">Mirror curve</button>
+              </Field>
+            )}
           </div>
           {el.r !== undefined && <SliderField label="Size" value={el.r} min={16} max={32} step={1} onChange={(v) => set("r", v)} testid="element-size-slider" />}
           {el.w !== undefined && <SliderField label="Width" value={el.w} min={20} max={44} step={1} onChange={(v) => set("w", v)} testid="element-width-slider" />}

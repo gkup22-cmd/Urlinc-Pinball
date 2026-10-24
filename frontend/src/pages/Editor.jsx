@@ -11,12 +11,13 @@ import { MissionsTab } from "../components/editor/MissionsTab";
 import { BackglassTab } from "../components/editor/BackglassTab";
 import { ArtTab } from "../components/editor/ArtTab";
 import { BrandTab } from "../components/editor/BrandTab";
+import { StoryTab } from "../components/editor/StoryTab";
 import { useTable } from "../hooks/useTable";
 import { KINDS, W, H, elementRadius } from "../game/geometry";
 import { errMsg, http } from "../lib/api";
 
-const EDITABLE = ["name", "palette", "bumpers", "targets", "rollovers", "ramps", "saucers", "missions", "scoring", "physics", "backglass", "brand", "art_enabled"];
-const TABS = [["layout", "Layout"], ["gameplay", "Gameplay"], ["missions", "Missions"], ["backglass", "Back-glass"], ["art", "Art"], ["brand", "Brand"]];
+const EDITABLE = ["name", "palette", "bumpers", "targets", "rollovers", "ramps", "saucers", "rails", "style", "story", "missions", "scoring", "physics", "backglass", "brand", "art_enabled"];
+const TABS = [["layout", "Layout"], ["gameplay", "Gameplay"], ["missions", "Missions"], ["story", "Story & Style"], ["backglass", "Back-glass"], ["art", "Art"], ["brand", "Brand"]];
 
 export default function Editor() {
   const { id } = useParams();
@@ -135,6 +136,7 @@ export default function Editor() {
             <TabsContent value="layout"><LayoutTab {...tabProps} /></TabsContent>
             <TabsContent value="gameplay"><GameplayTab {...tabProps} /></TabsContent>
             <TabsContent value="missions"><MissionsTab {...tabProps} /></TabsContent>
+            <TabsContent value="story"><StoryTab {...tabProps} /></TabsContent>
             <TabsContent value="backglass"><BackglassTab {...tabProps} /></TabsContent>
             <TabsContent value="art"><ArtTab {...tabProps} /></TabsContent>
             <TabsContent value="brand"><BrandTab {...tabProps} /></TabsContent>
