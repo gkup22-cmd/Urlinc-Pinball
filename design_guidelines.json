@@ -1,0 +1,59 @@
+{
+  "project_title": "ZenPinball AI - Custom Arcade Table Engine",
+  "archetype": "Electric Neon Arcade & Tactical Precision (Dark Mode Pinball Cabinet)",
+  "color_palette": {
+    "background": "#08090E",
+    "surface": "#10121B",
+    "surface_border": "#1E2235",
+    "primary_neon": "#FF007A",
+    "secondary_cyan": "#00F0FF",
+    "accent_amber": "#FFB800",
+    "accent_emerald": "#00FF88",
+    "text_primary": "#F1F5F9",
+    "text_muted": "#8A94AD",
+    "dmd_orange": "#FF6B00",
+    "dmd_bg": "#120800"
+  },
+  "typography": {
+    "headings": "Outfit, sans-serif",
+    "display_scores": "Orbitron, monospace",
+    "body": "Inter, sans-serif",
+    "code_mono": "JetBrains Mono, monospace"
+  },
+  "layout_strategy": {
+    "mode": "Mode A: Tetris Bento Grid with Dedicated Pinball Cabinet Stage",
+    "cabinet_structure": {
+      "backglass_dmd": "Glassmorphic overlay with animated LED dot-matrix score, current target mission, combo multipliers, tilt warning",
+      "playfield_canvas": "2D Physics Canvas wrapped in illuminated 1px neon tracing beam border with glossy glass reflection overlay",
+      "touch_controls": "Dual tactile flipper buttons (Left/Right) with haptic feedback & spring-loaded Plunger drag lever on mobile/touch"
+    },
+    "sidebar_drawers": {
+      "theme_generator": "Instant AI Theme Prompt box with quick preset pills (Cyberpunk Odyssey, Galactic Odyssey, Haunted Mansion, Neon Synthwave, Jurassic Safari)",
+      "table_editor": "Tabbed parameters: Physics (Gravity, Elasticity, Flipper Torque), Art & Backglass (Cabinet theme, dynamic playfield tint, photo-realistic art mode switch), Mission Rules (Target combo multiplier, Extra ball threshold), Brand Assets (Uploaded logo/icon texture selector)",
+      "saved_library": "Grid of saved custom tables with thumbnail previews, play count, high score, edit & delete controls"
+    }
+  },
+  "image_urls": {
+    "pinball_arcade_bg": "https://images.unsplash.com/photo-1616070159947-efb61527df82?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHw0fHxwaW5iYWxsJTIwbWFjaGluZSUyMGFyY2FkZSUyMG5lb258ZW58MHx8fHwxNzkyODUwNDA3fDA&ixlib=rb-4.1.0&q=85",
+    "pinball_vintage_detail": "https://images.pexels.com/photos/31311736/pexels-photo-31311736.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "pinball_close_up": "https://images.pexels.com/photos/2908281/pexels-photo-2908281.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "arcade_room_neon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwxfHxyZXRybyUyMGFyY2FkZSUyMGdhbWUlMjBuZW9uJTIwbWFjaGluZXxlbnwwfHx8fDE3OTI4NTA0MDd8MA&ixlib=rb-4.1.0&q=85",
+    "arcade_joystick_glow": "https://images.pexels.com/photos/29027879/pexels-photo-29027879.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+  },
+  "instructions_to_main_agent": [
+    "Always maintain dark arcade theme with vibrant neon highlights (#FF007A, #00F0FF, #FFB800).",
+    "Ensure all interactive components (flipper buttons, prompt inputs, play buttons, sliders, delete actions) contain explicit 'data-testid' attributes.",
+    "Implement canvas-based 2D pinball physics with realistic flippers, ball bounce, bumpers with particle burst FX, slingshots, lane targets, ramps, plunger spring pull, and multiball support.",
+    "Ensure complete responsive layout with prominent touch flipper buttons for mobile devices and keyboard controls (Left/Right Arrows, Spacebar for Plunger).",
+    "Provide dynamic AI table generation based on user theme prompts (custom bumper layouts, color palettes, backglass art, target values, ambient synth sound effects/synth audio cues).",
+    "Support saving, editing parameters (gravity, colors, flipper power, backglass title/tagline, scoring rules), loading, and deleting saved tables from a persistent store/localStorage.",
+    "Support brand asset upload library for custom logos/icons on bumpers or backglass.",
+    "Never use generic centered transparent overlays — use glassmorphism with backdrop-blur and 1px crisp borders."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": {
+    "data_testid_rule": "MUST include data-testid on every interactive element (e.g. data-testid='play-table-btn', data-testid='left-flipper-btn').",
+    "transitions": "Use explicit transitions like 'transition-colors duration-200' instead of 'transition-all'.",
+    "contrast": "All text must meet high APCA contrast ratios against #08090E and dark surfaces.",
+    "sonner_toasts": "Use sonner for toast notifications when tables are saved, edited, or deleted."
+  }
+}
