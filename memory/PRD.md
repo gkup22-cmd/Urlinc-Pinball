@@ -30,3 +30,7 @@ User choices: Claude Sonnet 5.5 (table design), GPT Image (photo-realistic art â
 - P1: Leaderboard with player initials per table; true 3D ramps/wire habitrails; spinners
 - P1: Integration with URLinc.us login (per-user libraries)
 - P2: Table sharing links, sound packs per theme, thumbnails for faster brand image loading
+
+## Iteration 4 (2026-06)
+- Story crawl: pause/resume via Space or click (synced to 2nd screen), auto-close on animation end; story.speed (0.5â€“2.5x) slider in Story & Style tab
+- 3 generic logo-free parts kits seeded from user's ChatGPT sheet: Classic Red / Classic Blue / Classic Gold (19 parts each, per-kit flipper pivot meta). Frostbeard's Revenge set to Classic Blue as showcase

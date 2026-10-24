@@ -1,4 +1,5 @@
 import asyncio
+import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -111,9 +112,11 @@ def build_router(db) -> APIRouter:
                 if f.stem in SLOTS:
                     parts[f.stem] = await store(f"{APP_NAME}/parts/seed-{folder.name}/{f.name}", f.read_bytes(), "image/png")
             name = " ".join(w.capitalize() for w in folder.name.split("_")).replace("Urlinc", "URLinc")
-            material = next((m for m in MATERIALS if m in folder.name), "chrome")
+            meta = json.loads((folder / "meta.json").read_text()) if (folder / "meta.json").exists() else {}
+            material = meta.get("material") or next((m for m in MATERIALS if m in folder.name), "chrome")
             await db.parts_kits.insert_one({"id": kit_id, "name": name, "seed_key": folder.name, "parts": parts,
-                                            "material": material, "is_deleted": False, "created_at": now()})
+                                            "material": material, "flipper": meta.get("flipper"),
+                                            "is_deleted": False, "created_at": now()})
 
     r.seed = seed
     return r

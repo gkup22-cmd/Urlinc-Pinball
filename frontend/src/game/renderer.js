@@ -581,16 +581,17 @@ function drawTarget(ctx, tg, g) {
 export function drawFlipper(ctx, side, angle, t, parts = {}) {
   if (parts.flipper_left) {
     const img = parts.flipper_left;
+    const F = parts.flipMeta || FLIP;
     const pv = PIVOTS[side];
-    const s = (FLEN + FR1) / (img.width * FLIP.len);
+    const s = (FLEN + FR1) / (img.width * F.len);
     ctx.save();
     ctx.translate(pv.x, pv.y);
     if (side === "right") ctx.scale(-1, 1);
-    ctx.rotate(angle - FLIP.tilt);
+    ctx.rotate(angle - F.tilt);
     ctx.shadowColor = "rgba(0,0,0,0.6)";
     ctx.shadowBlur = 6;
     ctx.shadowOffsetY = 4;
-    ctx.drawImage(img, -img.width * FLIP.px * s, -img.height * FLIP.py * s, img.width * s, img.height * s);
+    ctx.drawImage(img, -img.width * F.px * s, -img.height * F.py * s, img.width * s, img.height * s);
     ctx.restore();
     return;
   }

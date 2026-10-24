@@ -31,6 +31,7 @@ export function useTableImages(table) {
         const entries = Object.entries(kit?.parts || {});
         const imgs = await Promise.all(entries.map(([, p]) => loadImage(fileUrl(p))));
         entries.forEach(([slot], i) => imgs[i] && (parts[slot] = imgs[i]));
+        if (kit?.flipper) parts.flipMeta = kit.flipper;
       }
       let brandImgs = [];
       if (ids) {
