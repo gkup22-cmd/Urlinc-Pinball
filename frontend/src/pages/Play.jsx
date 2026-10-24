@@ -60,8 +60,8 @@ export default function Play() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="mx-auto grid max-w-7xl gap-6 px-3 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:py-6">
-        <section className="order-1 space-y-4 lg:order-1">
+      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-3 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:py-6">
+        <section className="order-1 min-w-0 space-y-4 lg:order-1">
           <Backglass table={table} state={state} logo={logoAsset ? fileUrl(logoAsset.storage_path) : null} />
           <div className="flex flex-wrap gap-2">
             {!table.saved && (
@@ -112,7 +112,7 @@ export default function Play() {
           <div className="w-[min(92vw,460px)]"><TouchControls gameRef={gameRef} /></div>
         </section>
 
-        <aside className="order-3 space-y-5">
+        <aside className="order-3 min-w-0 space-y-5">
           <div className="rounded-2xl border border-white/5 bg-[var(--surface)] p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-display text-base font-bold uppercase tracking-widest">Missions</h2>

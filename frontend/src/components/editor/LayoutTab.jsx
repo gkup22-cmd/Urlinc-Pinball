@@ -42,7 +42,7 @@ export const LayoutTab = ({ draft, patch, selected, setSelected }) => {
             <button onClick={remove} className="icon-btn hover:!border-red-500" aria-label="Delete element" data-testid="delete-element-btn"><Trash2 className="h-4 w-4" /></button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Label"><TextInput value={el.label} maxLength={14} onChange={(e) => set("label", e.target.value)} testid="element-label-input" /></Field>
+            <Field label="Label"><TextInput value={el.label} maxLength={16} onChange={(e) => set("label", e.target.value)} testid="element-label-input" /></Field>
             <Field label="Points"><NumInput value={el.points} min={10} onChange={(v) => set("points", v)} testid="element-points-input" /></Field>
           </div>
           {el.r !== undefined && <SliderField label="Size" value={el.r} min={16} max={32} step={1} onChange={(v) => set("r", v)} testid="element-size-slider" />}

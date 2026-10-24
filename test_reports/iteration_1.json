@@ -1,0 +1,47 @@
+{
+  "summary": "First full test run of Pinball Forge. Backend: 13/14 pytest passed (generate w/ Claude, CRUD, sanitize, saved filter, score, assets upload/soft-delete, file serving, 404/422/400 handling). ONLY failure: art generation - model 'gpt-image-1' is rejected by the Emergent proxy (400 'The model gpt-image-1 does not exist'); reproduced twice. A probe with model='gpt-image-1.5' via the same OpenAIImageGeneration class SUCCEEDED (1.47MB PNG). Frontend: Home (presets, switches, brand picker), brand-enabled generation via UI (table generated in ~30s, brand caps on bumpers, apron logos, backglass-brand-logo visible), Play (Space start+launch, arrow-key flippers move canvas, score increments to 25k, ball save, touch buttons), Editor (canvas click opens inspector, label/points edit, add bumper, gravity slider, comboMax, mission title/event select, backglass title -> Save -> reload persisted & shown on Play), Library (save from play, card shows, delete confirm removes, GET 404), Brand Kit (5 seeded, upload, delete) all work. Main frontend bug: mobile (390px) horizontal overflow on Play page.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/tables/{id}/art (run_art) and generate_art:true on /api/tables/generate", "issue": "Image generation always fails: litellm 400 \"The model 'gpt-image-1' does not exist\" from Emergent proxy. art_status becomes 'error: ...'. Probe with model='gpt-image-1.5' (same emergentintegrations OpenAIImageGeneration) works. Note: library only adds 'quality' param for dall-e-3/gpt-image-1, so with 1.5 quality is ignored (fine).", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "run_art", "issue": "emergentintegrations OpenAIImageGeneration.generate_images calls litellm.image_generation synchronously inside an async fn -> blocks the FastAPI event loop for the whole image generation (30-60s x 3 kinds when generate_art=true). Wrap call in asyncio.to_thread(lambda: asyncio.run(...)) or run in a thread/executor."},
+      {"endpoint": "start_art", "issue": "asyncio.create_task results not referenced -> tasks may be garbage-collected; keep refs in a set."},
+      {"endpoint": "DELETE /api/tables/{id}", "issue": "Art files/db.files records of deleted tables are left orphaned (no cleanup)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Play page main grid (mobile 390px)", "issue": "Horizontal overflow: documentElement.scrollWidth=450 vs 390. Single-column grid track grows to min-content of DMD text (dmd-main-text 'PRESS LAUNCH TO START') so backglass, controls, playfield, missions all cut off on right. Fix: add grid-cols-1/[minmax(0,1fr)] for base breakpoint or min-w-0 on sections; make DMD text truncate.", "selector": "main.grid > section.order-1, [data-testid='dmd-display']", "priority": "HIGH"},
+      {"component": "Play first launch", "issue": "First Space/launch press only starts the game ('PRESS LAUNCH TO START' -> 0); a second hold&release is needed to actually shoot the ball. Slightly confusing UX.", "selector": "[data-testid='launch-btn']", "priority": "LOW"},
+      {"component": "Play brand caps", "issue": "Brand bumper caps / apron logos load from 300-570KB PNGs via backend proxy and pop in after a few seconds; until then plain bumpers + text are drawn. Consider caching/thumbnails.", "selector": "[data-testid='playfield-canvas']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Photo-realistic art (Art tab / photo-art-switch)", "issue": "Fails due to backend gpt-image-1 model error; Art tab correctly shows art-error-backglass.", "affected_selectors": ["generate-art-backglass-btn", "art-error-backglass", "photo-art-switch"]}
+    ],
+    "design_issues": [
+      {"screen": "Brand Kit / brand picker", "issues": ["Seed asset 'URLinc Pill Badge' renders as a thin sliver (image mostly transparent/cropped); 'Round Badge' bottom cropped", "Brand name input not cleared after successful upload", "Asset delete has no confirmation"]},
+      {"screen": "Play backglass", "issues": ["Backglass subtitle (e.g. 'NEON RACING LEAGUE') very low contrast against gradient", "DMD main text truncated with ellipsis ('PRESS LAUNC…') on desktop", "Bumper/saucer labels truncated at 14 chars ('URLinc Pit Lan')", "Ball counter shows 'BALL -/3' before game start"]},
+      {"screen": "Editor Back-glass tab", "issues": ["Palette uses native <input type=color> browser picker (inconsistent with shadcn styling)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_pinball_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Switch image model from 'gpt-image-1' to 'gpt-image-1.5' in server.py run_art (verified working via probe), then retest art flow",
+    "Run image generation off the event loop (asyncio.to_thread) so the API is not blocked during art generation",
+    "Fix mobile horizontal overflow on Play page (grid min-width / DMD text truncation)",
+    "Optional: single launch press should start game AND shoot; fix Pill Badge seed asset; improve backglass subtitle contrast"
+  ],
+  "critical_code_review_comments": [
+    "server.py run_art: sync litellm call blocks loop; un-referenced create_task",
+    "Editor onDown calls setPointerCapture without try/catch (threw on synthetic pointer events in test; harmless for real users)",
+    "list_tables: saved defaults to True so there is no way to list all tables (saved=None unreachable via query) - fine for current UI"
+  ],
+  "updated_files": ["/app/backend/tests/test_pinball_api.py"],
+  "success_rate": {"backend": "93% (13/14)", "frontend": "90%"},
+  "seed_data_creation": "Generated 2 tables (API TEST_ deep sea volcano - deleted by test; UI 'TEST_ Neon racing league' - deleted via UI). Uploaded+deleted TEST_ assets. Existing table da0fe73f was saved during test then reset to saved:false. 1 probe image generated with gpt-image-1.5 (not stored).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest /app/backend/tests/test_pinball_api.py (generates 1 table + 1 backglass image). After model fix, verify art_status.backglass -> ready and backglass-art-img shows on Play; re-check Play page at 390px for overflow. Existing table id da0fe73f-b1fd-4fe4-9c68-4b480bc18929 (unsaved) for quick tests.",
+  "rca of the issue": "Art failure: backend log shows openai.BadRequestError 400 \"litellm.BadRequestError: OpenAIException - The model 'gpt-image-1' does not exist. Received Model Group=gpt-image-1\" - the Emergent proxy no longer exposes gpt-image-1; gpt-image-1.5 is available. Mobile overflow: CSS grid without explicit column track uses auto (min-content) width; nowrap DMD text makes it 438px wide."
+}

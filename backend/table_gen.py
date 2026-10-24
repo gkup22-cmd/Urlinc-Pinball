@@ -88,7 +88,7 @@ def sanitize_layout(data: dict) -> dict:
                 "x": _num(raw.get("x"), 0, 500, 250),
                 "y": _num(raw.get("y"), 0, 900, 300),
                 "points": int(_num(raw.get("points"), 10, 1000000, 1000)),
-                "label": str(raw.get("label") or "")[:14],
+                "label": str(raw.get("label") or "")[:16],
             }
             if kind == "bumpers":
                 el["r"] = int(_num(raw.get("r"), 16, 32, 22))

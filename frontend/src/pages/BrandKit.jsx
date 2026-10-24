@@ -25,6 +25,7 @@ export default function BrandKit() {
       toast.success("Asset added");
       setFile(null);
       setName("");
+      setBrand("");
       e.target.reset();
       refresh();
     } catch (err) {
@@ -35,6 +36,7 @@ export default function BrandKit() {
   };
 
   const remove = async (a) => {
+    if (!window.confirm(`Delete "${a.name}" from your brand kit?`)) return;
     try {
       await http.delete(`/assets/${a.id}`);
       toast.success(`Removed ${a.name}`);

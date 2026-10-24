@@ -200,8 +200,8 @@ export class PinballGame {
 
   setPlunger(held) {
     if (!this.started) {
-      if (held) this.newGame();
-      return;
+      if (!held) return;
+      this.newGame();
     }
     if (this.plungerHeld && !held) {
       const b = this.balls.find((x) => x.inLane && x.y > G.PLUNGER_Y - 60);

@@ -21,7 +21,7 @@ export const Backglass = ({ table, state, logo }) => {
         {logo && <img src={logo} alt="Brand logo" className="absolute right-3 top-3 h-12 w-auto drop-shadow-[0_0_12px_rgba(255,184,0,0.6)]" data-testid="backglass-brand-logo" />}
         {!art && (
           <div className="absolute inset-0 flex flex-col items-start justify-center px-6">
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em]" style={{ color: p.secondary }}>{bg.subtitle}</p>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.35em] text-white [text-shadow:0_0_8px_var(--bg-secondary),0_1px_2px_#000]">{bg.subtitle}</p>
             <h1 className="backglass-title font-display text-2xl sm:text-3xl font-black uppercase leading-none" data-testid="backglass-title">
               {bg.title || table.name}
             </h1>

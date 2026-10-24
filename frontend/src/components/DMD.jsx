@@ -17,13 +17,17 @@ export const DMD = ({ table, state }) => {
   return (
     <div className="dmd relative px-4 py-3" style={{ "--dmd": color }} data-testid="dmd-display">
       <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest" style={{ color }}>
-        <span data-testid="dmd-ball">BALL {s.ballNum || "-"}/{s.totalBalls || table.physics?.balls}</span>
+        <span data-testid="dmd-ball">{s.started ? `BALL ${s.ballNum}/${s.totalBalls}` : `${table.physics?.balls} BALLS`}</span>
         <span data-testid="dmd-multipliers">
           {s.combo > 1 ? `COMBO x${s.combo} ` : ""}BONUS x{s.bonusX || 1}
           {s.ballSave ? " • SAVE" : ""}
         </span>
       </div>
-      <div className="dmd-text my-1 truncate text-center font-display text-2xl sm:text-3xl font-black" style={{ color }} data-testid="dmd-main-text">
+      <div
+        className={`dmd-text my-1 text-center font-display font-black leading-tight ${String(main).length > 16 ? "text-base sm:text-lg" : "text-2xl sm:text-3xl"}`}
+        style={{ color }}
+        data-testid="dmd-main-text"
+      >
         {main}
       </div>
       {s.started && s.mission && (

@@ -86,7 +86,9 @@ async def run_art(table_id: str, kind: str):
     try:
         t = await get_table_or_404(table_id)
         gen = OpenAIImageGeneration(api_key=os.environ["EMERGENT_LLM_KEY"])
-        images = await gen.generate_images(prompt=art_prompt(kind, t), model="gpt-image-1", number_of_images=1, quality="medium")
+        prompt = art_prompt(kind, t)
+        images = await asyncio.to_thread(
+            lambda: asyncio.run(gen.generate_images(prompt=prompt, model="gpt-image-1.5", number_of_images=1)))
         if not images:
             raise RuntimeError("No image returned")
         path = f"{APP_NAME}/art/{table_id}/{kind}-{uuid.uuid4().hex[:8]}.png"
@@ -100,9 +102,14 @@ async def run_art(table_id: str, kind: str):
         await db.tables.update_one({"id": table_id}, {"$set": {f"art_status.{kind}": f"error: {str(e)[:120]}"}})
 
 
+_tasks = set()
+
+
 def start_art(table_id: str, kinds: List[str]):
     for k in kinds:
-        asyncio.create_task(run_art(table_id, k))
+        task = asyncio.create_task(run_art(table_id, k))
+        _tasks.add(task)
+        task.add_done_callback(_tasks.discard)
 
 
 @api.get("/")
@@ -167,6 +174,7 @@ async def delete_table(table_id: str):
     res = await db.tables.delete_one({"id": table_id})
     if not res.deleted_count:
         raise HTTPException(404, "Table not found")
+    await db.files.update_many({"storage_path": {"$regex": f"^{APP_NAME}/art/{table_id}/"}}, {"$set": {"is_deleted": True}})
     return {"ok": True}
 
 
