@@ -110,10 +110,15 @@ def _sanitize_rails(raw_rails, placed):
         pts = sorted(pts[:5], key=lambda p: p[1])
         if len(pts) < 2 or any(b[1] - a[1] < 4 for a, b in zip(pts, pts[1:])):
             continue
-        if not all(_inside(x, y, 18) for x, y in pts):
-            continue
-        clash = any(_seg_dist(px, py, *a, *b) < pr + 26 for a, b in zip(pts, pts[1:]) for px, py, pr in placed)
-        if clash:
+        base = pts
+        for i in range(60):
+            ox = 0 if i == 0 else random.uniform(-1, 1) * (10 + i * 5)
+            oy = 0 if i == 0 else random.uniform(-1, 1) * (10 + i * 5)
+            pts = [(x + ox, y + oy) for x, y in base]
+            if all(_inside(x, y, 18) for x, y in pts) and not any(
+                    _seg_dist(px, py, *a, *b) < pr + 26 for a, b in zip(pts, pts[1:]) for px, py, pr in placed):
+                break
+        else:
             continue
         cx = sum(p[0] for p in pts) / len(pts)
         cy = sum(p[1] for p in pts) / len(pts)

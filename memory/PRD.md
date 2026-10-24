@@ -16,6 +16,13 @@ User choices: Claude Sonnet 5.5 (table design), GPT Image (photo-realistic art â
 - Editor: drag-and-drop layout with an inspector, physics and scoring settings, missions, back-glass text and colors, art generation (playfield, back-glass, cabinet) with show/hide toggles, and brand placement.
 - Brand Kit: 5 URLinc assets added from the user's uploads. Upload and delete work. Brand assets go on bumper caps, the back-glass logo and the apron logos.
 
+## Iteration 2 (2026-06)
+- Back-glass score overlay (score/ball/high score), pop-out back-glass on a 2nd screen (/backglass/:id, Window Management API placement + BroadcastChannel sync, F = fullscreen)
+- AI story per table (title, episode, crawl) shown as Star Wars-style perspective crawl in the theme font on table open; replay button; editable + AI rewrite in Editor Story & Style tab
+- Theme style: 20 Google display fonts, hardware finish (chrome/gold/copper/crystal/neon), ambient animations (fog, bubbles, embers, stars, rain, snow, lightning, leaves, sparks, matrix, petals, bats, fireflies)
+- Layout variety: AI places guide rails, habitrail wire ramps that carry the ball to an inlane, target styles (drop, flag, shield, gem, post) with knock-down animation
+- Photo-real renderer: metallic bumpers with LED rings + gloss, metal rails/slings/saucers, flash light shows, ball search; new art kind: photo-real bumper caps
+
 ## Backlog
 - P1: Leaderboard with player initials per table; true 3D ramps/wire habitrails; spinners
 - P1: Integration with URLinc.us login (per-user libraries)

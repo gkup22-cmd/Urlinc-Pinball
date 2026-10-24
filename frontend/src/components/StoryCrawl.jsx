@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { SkipForward } from "lucide-react";
 import { loadThemeFonts, themeFonts } from "../game/fonts";
 
@@ -15,17 +15,24 @@ export const StoryCrawl = ({ table, onDone, showSkip = true }) => {
   const p = table.palette;
   const words = (story.crawl || []).join(" ").split(/\s+/).length;
   const duration = useMemo(() => Math.max(38, Math.round(words * 0.42)), [words]);
+  const done = useRef(onDone);
+  done.current = onDone;
+  const tableId = table.id;
 
   useEffect(() => {
     loadThemeFonts(table);
-    const t = setTimeout(onDone, (duration + 9) * 1000);
-    const key = (e) => e.key === "Escape" && onDone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableId]);
+
+  useEffect(() => {
+    const t = setTimeout(() => done.current(), (duration + 9) * 1000);
+    const key = (e) => e.key === "Escape" && done.current();
     window.addEventListener("keydown", key);
     return () => {
       clearTimeout(t);
       window.removeEventListener("keydown", key);
     };
-  }, [duration, onDone, table]);
+  }, [duration]);
 
   return (
     <div className="crawl-root fixed inset-0 z-50 overflow-hidden bg-black" style={{ "--crawl-color": p.accent, "--crawl-glow": p.primary }} data-testid="story-crawl">
@@ -48,7 +55,7 @@ export const StoryCrawl = ({ table, onDone, showSkip = true }) => {
         </div>
       </div>
       {showSkip && (
-        <button onClick={onDone} className="ghost-btn absolute bottom-6 right-6 z-10 bg-black/40 backdrop-blur" data-testid="story-skip-btn">
+        <button onClick={onDone} className="ghost-btn absolute right-4 top-4 z-10 bg-black/40 backdrop-blur sm:bottom-6 sm:right-6 sm:top-auto" data-testid="story-skip-btn">
           <SkipForward className="h-4 w-4" /> Skip intro
         </button>
       )}

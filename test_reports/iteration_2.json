@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 2: story crawl, theme style, rails/habitrails/target styles, back-glass score + 2nd screen. Backend: 6/7 new tests pass (generate returns style{font,material,ambient,targetStyle}, story{title,episode,crawl[]}, rails[{id,x,y,pts,label}], ramps[].habitrail, targets[].style; POST /story on storyless da0fe73f works + persists; 404 on unknown id; invalid style falls back to defaults; story/style/target-style PUT persists; existing rails in pts form survive sanitize idempotently 20/20). FAIL: rails added at the editor default position are silently dropped by sanitize on PUT. Regression suite (13 tests incl. one generate) all pass. Frontend: Play crawl auto-opens (episode/title/text in theme font 'IM Fell English' 46px, readable, Star-Wars perspective scroll), skip / Escape close, replay reopens; backglass score/caption/high-score shown and update during play (0 -> 5,000, BALL 1/3); /backglass/{id} in a second page mirrors score via BroadcastChannel (5,000 BALL 1/3); second-screen-btn opens popup at /backglass/{id} which loads and shows score. Editor Story tab: all selects/inputs exist, preview works, edits persist after reload; Layout: add rail shows inspector+mirror btn, target shows element-target-style-select, ramp shows element-habitrail-select; Art tab has art-card-caps. Mobile 390px no overflow anymore. Home/Brand Kit load.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/tables/{id} (_sanitize_rails)", "issue": "Rails that clash with any element (seg distance < r+26) or fall outside are DROPPED silently instead of being nudged like other elements. Editor 'Add rail' default (x=233,y=420, pts [[-12,-55],[0,0],[12,55]]) clashed on table da0fe73f -> after Save toast 'Table saved' the rail is gone (rails: []). Same for a rail at x=100,y=430 in pytest. Fix: nudge rails (try offsets like _place) or return a warning, and/or pick a free default spot in LayoutTab.add for rails."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "StoryCrawl auto-dismiss (Play page)", "issue": "Crawl never auto-closes. Play passes inline onDone={() => showStory(false)}; engine.emit fires onState every 100ms -> Play re-renders -> new onDone identity -> StoryCrawl useEffect([duration,onDone,table]) clears and restarts the (duration+9)s timeout every 100ms (also re-calls loadThemeFonts + re-binds keydown). Verified: crawl (66s duration) still open after ~87s, showing an empty starfield until user clicks Skip. Fix: wrap onDone in useCallback in Play (const closeStory = useCallback(() => showStory(false), [showStory])) or store onDone in a ref inside StoryCrawl and drop it from deps.", "selector": "[data-testid='story-crawl']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Editor add rail -> Save", "issue": "Rail added via add-rails-btn disappears after save with no feedback (backend drops clashing rails).", "affected_selectors": ["[data-testid='add-rails-btn']", "[data-testid='save-changes-btn']"]}
+    ],
+    "design_issues": [
+      {"screen": "Story crawl mobile 390px", "issues": ["Skip intro button overlaps crawl text at bottom-right (minor)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_story_style_rails.py", "/app/backend/tests/test_pinball_api.py", "/app/backend/tests/probe_rails.py", "/app/test_reports/pytest/pytest_iter2.xml"],
+  "action_items": [
+    "Fix StoryCrawl auto-dismiss: stabilize onDone (useCallback in Play.jsx / ref in StoryCrawl.jsx)",
+    "Make _sanitize_rails nudge clashing rails instead of dropping them, or choose a free default position in LayoutTab for new rails and warn user when a rail is removed on save"
+  ],
+  "critical_code_review_comments": [
+    "Play.jsx auto-POSTs /tables/{id}/story (LLM call) for every storyless table on page load; fine once per mount, but every visit to an old table without a story costs an LLM call until it succeeds - acceptable since it persists.",
+    "generate_story keeps existing style untouched if table already has style (ok) but tables with partial style dicts (missing targetStyle) are not backfilled.",
+    "BackglassScreen relies on Play page responding to 'hello'; if the Play tab is closed the popup just shows the high score (fine)."
+  ],
+  "updated_files": ["/app/backend/tests/test_story_style_rails.py", "/app/backend/tests/probe_rails.py"],
+  "success_rate": {"backend": "95% (19/20 incl. regression)", "frontend": "93%"},
+  "seed_data_creation": "One TEST_ pirate table generated and deleted. Table da0fe73f (Phantom Manor) now has an AI story, then edited by test: story episode 'TEST EPISODE VII', title 'TEST Haunted Title', crawl 'TEST para...', style Rye/gold/bats/gem, saved=true. Another regression generate table created by test_pinball_api (cleaned by that suite).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use 3af4fa41 (Frostbeard) for Play/crawl/backglass tests. Crawl closes with story-skip-btn or Escape. To start ball: click canvas, hold Space 1.1s twice. ambient select options are in a scroll list: use scroll_into_view_if_needed before click (force click hits wrong option). Retest: crawl auto-close after (duration+9)s, and rail persistence after editor add+save.",
+  "rca of the issue": "Crawl: unstable callback prop in effect deps + 10Hz parent re-render resets setTimeout. Rail: sanitize_layout places all elements first, then _sanitize_rails rejects any rail within pr+26 of an element with no relocation attempt."
+}
